@@ -126,14 +126,29 @@ xiaozhi-server/
 |---|---|
 | 固件编译 | `xiaozhi-esp32/build/` 存在历史编译产物（sdkconfig 已生成） |
 | 服务器部署 | 未部署，配置为出厂默认（`config.yaml` 未覆盖，无 `data/.config.yaml`） |
-| 版本控制 | 根目录**尚未初始化 git**（三个子项目为源码拷贝） |
+| 版本控制 | ✅ 已初始化 git 并推送基线至 [robot-esp32](https://github.com/Ayacloud-KEWEN/robot-esp32)（分支 main） |
 | 定制修改 | 无——当前为上游原始代码基线 |
 
-> 后续所有定制开发都应与本基线对照。建议第一步 `git init` 并提交本基线，之后的每一处修改都可追溯 diff。
+> 后续所有定制开发都与本基线对照，每一处修改均可通过 `git diff` 追溯。
 
 ---
 
-## 四、定制开发路线图（Roadmap）
+## 四、本项目选型定稿（2026-07-16）
+
+| 项 | 选型 | 说明 |
+|---|---|---|
+| 首台设备 / 开发板 | 微雪 ESP32-S3-ePaper-1.54 套件 | 固件已内置板级适配：`xiaozhi-esp32/main/boards/waveshare/esp32-s3-epaper-1.54/`，menuconfig 选中即可 |
+| 定制机器人核心 | ESP32-S3 N16R8 机芯盒 | 16MB Flash + 8MB PSRAM，满足小智 v2 + 离线唤醒词要求 |
+| LLM | DeepSeek API（deepseek-chat） | 服务器 `config.yaml` 内置 `DeepSeekLLM`，key 填入 `data/.config.yaml`（已被 .gitignore 排除，不入库） |
+| ASR | FunASR（本地，免费） | 初期方案，后续可按延迟/效果升级 |
+| TTS | EdgeTTS（免费） | 初期方案，后续可换可克隆音色的方案（如 CosyVoice） |
+| 代码仓库 | https://github.com/Ayacloud-KEWEN/robot-esp32 | 单仓库（monorepo），基线已提交 |
+
+注意事项：
+- 墨水屏（ePaper）刷新慢，表情/动画设计需比 LCD 简化，但省电、观感温润，适合陪伴场景
+- API 密钥只写在 `xiaozhi-server/data/.config.yaml`，**永远不提交到 git**
+
+## 五、定制开发路线图（Roadmap）
 
 1. **建立版本控制**：根目录 `git init`，提交上游基线代码
 2. **服务器跑通**（最小闭环）：
@@ -153,7 +168,7 @@ xiaozhi-server/
 
 ---
 
-## 五、学习文档
+## 六、学习文档
 
 配套的循序渐进学习教程位于 [docs/learning/](docs/learning/)：
 
@@ -164,7 +179,7 @@ xiaozhi-server/
 5. [04-大模型与语音AI流水线](docs/learning/04-大模型与语音AI流水线.md)
 6. [05-陪伴机器人定制实战](docs/learning/05-陪伴机器人定制实战.md)
 
-## 六、参考资料
+## 七、参考资料
 
 - 小智官方固件：https://github.com/78/xiaozhi-esp32
 - 自建服务器项目：https://github.com/xinnan-tech/xiaozhi-esp32-server
