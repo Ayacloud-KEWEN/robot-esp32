@@ -1,0 +1,32 @@
+# ===== 构建产物 =====
+xiaozhi-esp32/build/
+xiaozhi-esp32/managed_components/
+xiaozhi-esp32/dependencies.lock
+xiaozhi-esp32/sdkconfig.old
+
+# ===== 前端依赖与产物 =====
+node_modules/
+dist/
+.webpack_cache/
+
+# ===== Java 构建 =====
+target/
+*.class
+
+# ===== Python =====
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ===== 运行时数据与密钥（绝不入库）=====
+xiaozhi-esp32-server/main/xiaozhi-server/data/
+xiaozhi-esp32-server/main/xiaozhi-server/tmp/
+*.log
+.env.local
+
+# ===== IDE / 系统 =====
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
