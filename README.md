@@ -180,6 +180,11 @@ xiaozhi-server/
 6. [05-陪伴机器人定制实战](docs/learning/05-陪伴机器人定制实战.md)
 7. [06-树莓派系统指南](docs/learning/06-树莓派系统指南.md) — 家庭服务器现状、常用命令与部署建议
 
+另有实用文档：
+- [对话链路测试指南](docs/对话链路测试指南.md) — 首次语音测试步骤与排障
+- [将来可以做的事](docs/将来可以做的事.md) — 创意清单与推荐路线
+- [树莓派巡检报告](docs/pi-usage-report.md) / [部署配置](deploy/pi/README.md)
+
 ## 七、参考资料
 
 - 小智官方固件：https://github.com/78/xiaozhi-esp32
