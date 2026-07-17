@@ -24,4 +24,4 @@
 
 ## 密码说明
 
-MySQL root 密码通过环境变量 `MYSQL_ROOT_PASSWORD` 注入（默认 123456，**待改强密码**，改时需同步 `SPRING_DATASOURCE_DRUID_PASSWORD`）。实机可在部署目录放 `.env` 文件（不入库）。
+MySQL root 密码通过环境变量 `MYSQL_ROOT_PASSWORD` 注入，实机存放于 `/opt/xiaozhi-server/.env`（chmod 600，不入库）。已于 2026-07-17 由默认 `123456` 改为强密码（`SPRING_DATASOURCE_DRUID_PASSWORD` 同变量注入，自动同步）。注意：MySQL 数据卷已初始化，今后再改密码需在容器内 `ALTER USER`，仅改 `.env` 不生效。

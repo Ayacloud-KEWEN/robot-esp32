@@ -49,15 +49,15 @@
 未执行（用户指示保留）：llama.cpp 及游戏测试相关 app。
 未执行（待决策）：`jellyfin_old..._-1`（运行中的重复 Jellyfin）、`my-static-site_old`、B/C 类项目。
 
-## 三、⚠️ 待处理风险清单
+## 三、风险清单与处置记录（2026-07-17 更新）
 
-| # | 风险 | 影响 | 建议处理 |
-|---|---|---|---|
-| 1 | **MySQL root 密码为默认 `123456`** | 智控台 8002 已经 frp 暴露公网；虽 MySQL 本身未暴露（仅容器内网），但属弱口令 | 改强密码：compose 中 `MYSQL_ROOT_PASSWORD` 与 `SPRING_DATASOURCE_DRUID_PASSWORD` 两处同步修改后重建容器（配置模板见 [deploy/pi/](../deploy/pi/)，实机用 `.env` 注入） |
-| 2 | **小智 WebSocket(8005) 公网可达且服务端认证未开** | 任何人拿到地址即可连接，消耗 DeepSeek/ASR 额度 | 在智控台开启设备认证/token 校验后再对外使用；或 frp 暂时撤下 8005 |
-| 3 | frp 映射 3001/3002 指向旧版页面 | 无谓的公网暴露面 | 与旧版页面一起下线（见 B 节） |
-| 4 | 智控台 8002 管理界面公网可达 | 管理员口令是唯一防线 | 确保管理员密码足够强；条件允许改为 VPN/白名单访问 |
-| 5 | 运行中的重复容器 `jellyfin_old..._-1` | 与正牌 Jellyfin 重复，浪费约 580MB 内存 | 确认正牌数据无缺后停删 |
+| # | 风险 | 状态 |
+|---|---|---|
+| 1 | MySQL root 密码为默认 `123456` | ✅ **已处理**：已 ALTER USER 改为强密码，密码经 `/opt/xiaozhi-server/.env`（chmod 600，不入库）注入 compose；实机 compose 已切换为 [deploy/pi/](../deploy/pi/) 仓库版本（原文件备份为 `docker-compose_all.yml.bak`）；web 容器重建后验证正常（HTTP 200 / OTA 正常） |
+| 2 | 小智 WebSocket(8005) 公网可达、疑似未开认证 | ✅ **核实无此风险**：数据库确认 `server.auth.enabled = true`，设备需经智控台绑定认证，初版报告推测有误 |
+| 3 | frp 映射 3001/3002 指向旧版页面 | ⏳ 待决策：与旧版页面（`~/xiaozhi-web`、`~/xiaozhi-admin`）一起下线（见 B 节） |
+| 4 | 智控台 8002 管理界面公网可达 | ⏳ 依赖管理员口令强度；条件允许改为 VPN/白名单访问 |
+| 5 | 运行中的重复容器 `jellyfin_old..._-1` | ⏳ 待确认正牌 Jellyfin 数据无缺后停删（约省 580MB 内存） |
 
 ## 四、与仓库的关系
 
