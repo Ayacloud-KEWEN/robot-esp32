@@ -14,7 +14,8 @@
 | OTA 接口 | `http://192.168.1.29:8002/xiaozhi/ota/`（全模块模式下 OTA 在 8002） |
 | WebSocket | `ws://192.168.1.29:8005/xiaozhi/v1/`（宿主 8005 → 容器 8000，因 8000 被 Portainer 占用） |
 | 视觉接口 | `http://192.168.1.29:8003/mcp/vision/explain` |
-| 公网入口 | frp → OVH VPS `51.210.7.13`（映射 8002/8003/8005/3001/3002），frpc 配置在 `~/frp_0.68.0_linux_arm64/frpc.toml` |
+| 公网入口 | **`https://robot.ayacloud.fr`**（VPS CloudPanel nginx 反代 → 127.0.0.1:8002 → frp 隧道 → 树莓派 8002，带 Let's Encrypt 证书；HTTPS 使固件烧录页的 Web Serial 可直接使用） |
+| frp | 树莓派 frpc（`~/frp_0.68.0_linux_arm64/frpc.toml`）→ VPS `51.210.7.13` frps（`ubuntu@` 主机，`/home/ubuntu/frp_0.68.0_linux_amd64/`，systemd `frps.service`），映射 8002/8003/8005/3001-3003。⚠️ 2026-07-18 曾因 frps 二进制丢失中断 11 天，已从 tar 包恢复 |
 
 ## 与仓库的同步方式
 
