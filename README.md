@@ -125,9 +125,9 @@ xiaozhi-server/
 | 项 | 状态 |
 |---|---|
 | 固件编译 | `xiaozhi-esp32/build/` 存在历史编译产物（sdkconfig 已生成） |
-| 服务器部署 | 未部署，配置为出厂默认（`config.yaml` 未覆盖，无 `data/.config.yaml`） |
+| 服务器部署 | ✅ 树莓派智控台全家桶运行中（FunASR+DeepSeek+EdgeTTS），公网入口 https://robot.ayacloud.fr |
 | 版本控制 | ✅ 已初始化 git 并推送基线至 [robot-esp32](https://github.com/Ayacloud-KEWEN/robot-esp32)（分支 main） |
-| 定制修改 | 无——当前为上游原始代码基线 |
+| 定制修改 | 智控台新增固件烧录页(自有镜像已上线)；固件OTA指向自建服务器；**2026-07-18 ePaper-1.54 真机对话跑通** ✅ |
 
 > 后续所有定制开发都与本基线对照，每一处修改均可通过 `git diff` 追溯。
 
