@@ -2,6 +2,7 @@
 #include <esp_lcd_panel_io.h>
 #include <freertos/FreeRTOS.h>
 #include <vector>
+#include <string>
 #include <esp_log.h>
 #include "custom_lcd_display.h"
 #include "board.h"
@@ -400,4 +401,182 @@ void CustomLcdDisplay::EPD_DrawColorPixel(uint16_t x, uint16_t y, uint8_t color)
     } else {
         buffer[index] &= ~(0x01 << bit);
     }
+}
+
+/* ============================================================
+ *  大表情脸（Big Face）
+ *  用 LVGL 基础图形绘制占据屏幕上半区的大脸，黑白分明适配墨水屏。
+ *  覆盖基类 LcdDisplay::SetEmotion 的小图标方案。
+ * ============================================================ */
+
+// 脸部布局常量（屏幕200x200，脸区180x120，居中偏上）
+static constexpr int FACE_W = 180;
+static constexpr int FACE_H = 120;
+static constexpr int EYE_CX_L = 48;    // 左眼中心x
+static constexpr int EYE_CX_R = 132;   // 右眼中心x
+static constexpr int EYE_CY  = 42;     // 眼睛中心y
+static constexpr int MOUTH_CX = 90;    // 嘴中心x
+
+void CustomLcdDisplay::CreateFace() {
+    if (face_ != nullptr) {
+        return;
+    }
+    auto screen = lv_screen_active();
+
+    face_ = lv_obj_create(screen);
+    lv_obj_remove_style_all(face_);
+    lv_obj_set_size(face_, FACE_W, FACE_H);
+    lv_obj_align(face_, LV_ALIGN_TOP_MID, 0, 34);
+    lv_obj_remove_flag(face_, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+
+    auto make_solid = [this](lv_obj_t*& obj, bool circle) {
+        obj = lv_obj_create(face_);
+        lv_obj_remove_style_all(obj);
+        lv_obj_set_style_bg_color(obj, lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(obj, circle ? LV_RADIUS_CIRCLE : 4, 0);
+        lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    };
+    make_solid(left_eye_, true);
+    make_solid(right_eye_, true);
+    make_solid(left_brow_, false);
+    make_solid(right_brow_, false);
+    make_solid(tear_, true);
+    make_solid(mouth_bar_, false);
+
+    // 弧线嘴：隐藏背景弧和旋钮，只留指示弧
+    mouth_arc_ = lv_arc_create(face_);
+    lv_obj_remove_style(mouth_arc_, NULL, LV_PART_KNOB);
+    lv_obj_set_style_arc_opa(mouth_arc_, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_arc_color(mouth_arc_, lv_color_black(), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(mouth_arc_, 8, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_rounded(mouth_arc_, true, LV_PART_INDICATOR);
+    lv_obj_remove_flag(mouth_arc_, LV_OBJ_FLAG_CLICKABLE);
+    lv_arc_set_rotation(mouth_arc_, 0);
+    lv_arc_set_bg_angles(mouth_arc_, 0, 360);
+
+    // 睡觉的 zZ
+    zzz_label_ = lv_label_create(face_);
+    lv_label_set_text(zzz_label_, "z Z");
+    lv_obj_set_style_text_color(zzz_label_, lv_color_black(), 0);
+    lv_obj_set_pos(zzz_label_, FACE_W - 46, 2);
+}
+
+// 小工具：以中心点摆放一个矩形部件
+static void place_center(lv_obj_t* obj, int cx, int cy, int w, int h) {
+    lv_obj_set_size(obj, w, h);
+    lv_obj_set_pos(obj, cx - w / 2, cy - h / 2);
+    lv_obj_remove_flag(obj, LV_OBJ_FLAG_HIDDEN);
+}
+
+void CustomLcdDisplay::ApplyFace(const char* e) {
+    // 先全部隐藏，再按表情逐个摆放
+    lv_obj_add_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(left_brow_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(right_brow_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(tear_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(mouth_arc_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(mouth_bar_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(zzz_label_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_transform_rotation(left_brow_, 0, 0);
+    lv_obj_set_style_transform_rotation(right_brow_, 0, 0);
+
+    auto eyes_open = [this](int size) {
+        place_center(left_eye_, EYE_CX_L, EYE_CY, size, size);
+        place_center(right_eye_, EYE_CX_R, EYE_CY, size, size);
+    };
+    auto eyes_closed = [this]() {
+        place_center(left_eye_, EYE_CX_L, EYE_CY, 40, 9);
+        place_center(right_eye_, EYE_CX_R, EYE_CY, 40, 9);
+    };
+    // 弧线嘴：smile=下半弧, frown=上半弧(下移), circle=整圆
+    auto mouth_smile = [this](int size, int width) {
+        lv_obj_set_style_arc_width(mouth_arc_, width, LV_PART_INDICATOR);
+        lv_obj_set_size(mouth_arc_, size, size);
+        lv_obj_set_pos(mouth_arc_, MOUTH_CX - size / 2, 96 - size / 2);
+        lv_arc_set_angles(mouth_arc_, 25, 155);
+        lv_obj_remove_flag(mouth_arc_, LV_OBJ_FLAG_HIDDEN);
+    };
+    auto mouth_frown = [this](int size) {
+        lv_obj_set_style_arc_width(mouth_arc_, 8, LV_PART_INDICATOR);
+        lv_obj_set_size(mouth_arc_, size, size);
+        lv_obj_set_pos(mouth_arc_, MOUTH_CX - size / 2, 118 - size / 2);
+        lv_arc_set_angles(mouth_arc_, 205, 335);
+        lv_obj_remove_flag(mouth_arc_, LV_OBJ_FLAG_HIDDEN);
+    };
+    auto mouth_o = [this](int size) {
+        lv_obj_set_style_arc_width(mouth_arc_, 8, LV_PART_INDICATOR);
+        lv_obj_set_size(mouth_arc_, size, size);
+        lv_obj_set_pos(mouth_arc_, MOUTH_CX - size / 2, 96 - size / 2);
+        lv_arc_set_angles(mouth_arc_, 0, 360);
+        lv_obj_remove_flag(mouth_arc_, LV_OBJ_FLAG_HIDDEN);
+    };
+    auto mouth_flat = [this](int w) {
+        place_center(mouth_bar_, MOUTH_CX, 96, w, 8);
+    };
+
+    std::string em = (e != nullptr) ? e : "neutral";
+
+    if (em == "happy" || em == "relaxed" || em == "confident" ||
+        em == "loving" || em == "kissy" || em == "delicious") {
+        eyes_open(36);
+        mouth_smile(72, 8);
+    } else if (em == "laughing" || em == "funny" || em == "silly") {
+        eyes_closed();                      // 眯眼大笑
+        mouth_smile(92, 10);
+    } else if (em == "sad") {
+        eyes_open(30);
+        mouth_frown(64);
+    } else if (em == "crying") {
+        eyes_open(30);
+        mouth_frown(64);
+        place_center(tear_, EYE_CX_R + 26, EYE_CY + 26, 12, 16);   // 眼角泪滴
+    } else if (em == "angry") {
+        eyes_open(32);
+        // 斜眉：内低外高
+        place_center(left_brow_, EYE_CX_L, EYE_CY - 30, 44, 9);
+        place_center(right_brow_, EYE_CX_R, EYE_CY - 30, 44, 9);
+        lv_obj_set_style_transform_rotation(left_brow_, 250, 0);    // +25°
+        lv_obj_set_style_transform_rotation(right_brow_, -250, 0);  // -25°
+        mouth_frown(64);
+    } else if (em == "surprised" || em == "shocked") {
+        eyes_open(46);
+        mouth_o(44);
+    } else if (em == "winking") {
+        place_center(left_eye_, EYE_CX_L, EYE_CY, 40, 9);           // 左眼闭
+        place_center(right_eye_, EYE_CX_R, EYE_CY, 36, 36);         // 右眼睁
+        mouth_smile(72, 8);
+    } else if (em == "cool") {
+        // “墨镜”：两条粗横杠盖住眼睛
+        place_center(left_brow_, EYE_CX_L, EYE_CY, 52, 20);
+        place_center(right_brow_, EYE_CX_R, EYE_CY, 52, 20);
+        mouth_smile(64, 8);
+    } else if (em == "sleepy") {
+        eyes_closed();
+        mouth_flat(36);
+        lv_obj_remove_flag(zzz_label_, LV_OBJ_FLAG_HIDDEN);
+    } else if (em == "thinking" || em == "confused" || em == "embarrassed") {
+        place_center(left_eye_, EYE_CX_L, EYE_CY, 32, 32);
+        place_center(right_eye_, EYE_CX_R, EYE_CY - 6, 24, 24);     // 一大一小
+        place_center(right_brow_, EYE_CX_R, EYE_CY - 34, 40, 8);    // 挑眉
+        mouth_flat(30);
+    } else {  // neutral 及未知情绪
+        eyes_open(32);
+        mouth_flat(44);
+    }
+}
+
+void CustomLcdDisplay::SetEmotion(const char* emotion) {
+    DisplayLockGuard lock(this);
+    CreateFace();
+    // 隐藏基类的小图标表情
+    if (emoji_label_ != nullptr) {
+        lv_obj_add_flag(emoji_label_, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (emoji_image_ != nullptr) {
+        lv_obj_add_flag(emoji_image_, LV_OBJ_FLAG_HIDDEN);
+    }
+    lv_obj_remove_flag(face_, LV_OBJ_FLAG_HIDDEN);
+    ApplyFace(emotion);
 }

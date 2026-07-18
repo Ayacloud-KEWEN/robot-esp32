@@ -33,6 +33,9 @@ public:
     void EPD_Init();    /* 墨水屏初始化 */
     void EPD_Clear();   /* 清空屏幕 */
     void EPD_Display(); /* 刷buffer到墨水屏 */
+
+    /* 大表情脸：用LVGL图形绘制，覆盖基类的小图标表情 */
+    virtual void SetEmotion(const char* emotion) override;
     
     /*快速刷新*/
     void EPD_DisplayPartBaseImage();
@@ -41,6 +44,19 @@ public:
     void EPD_DrawColorPixel(uint16_t x, uint16_t y,uint8_t color);
     
 private:
+    /* 大表情脸的部件 */
+    lv_obj_t* face_ = nullptr;
+    lv_obj_t* left_eye_ = nullptr;
+    lv_obj_t* right_eye_ = nullptr;
+    lv_obj_t* left_brow_ = nullptr;
+    lv_obj_t* right_brow_ = nullptr;
+    lv_obj_t* tear_ = nullptr;
+    lv_obj_t* mouth_arc_ = nullptr;   // 弧线嘴（笑/哭/惊讶圆嘴）
+    lv_obj_t* mouth_bar_ = nullptr;   // 直线嘴（平静）
+    lv_obj_t* zzz_label_ = nullptr;   // 睡觉 zZ
+    void CreateFace();
+    void ApplyFace(const char* emotion);
+
     const custom_lcd_spi_t lcd_spi_data;
     const int Width;
     const int Height;
