@@ -183,6 +183,7 @@ xiaozhi-server/
 9. [08-智控台模块详解](docs/learning/08-智控台模块详解.md) — VAD/ASR/VLLM/意图/TTS/记忆/知识库的功能与配置
 
 另有实用文档：
+- [定制开发记录](docs/定制开发记录.md) — 所有定制改动的 Changelog
 - [对话链路测试指南](docs/对话链路测试指南.md) — 首次语音测试步骤与排障
 - [将来可以做的事](docs/将来可以做的事.md) — 创意清单与推荐路线
 - [树莓派巡检报告](docs/pi-usage-report.md) / [部署配置](deploy/pi/README.md)

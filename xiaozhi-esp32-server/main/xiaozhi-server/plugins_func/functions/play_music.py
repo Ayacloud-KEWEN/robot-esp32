@@ -5,6 +5,32 @@ import random
 import difflib
 import traceback
 from pathlib import Path
+
+# --- 简繁归一化支持(vendor目录随插件挂载,容器重建不丢失) ---
+import sys as _sys
+
+_VENDOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "vendor")
+if os.path.isdir(_VENDOR) and _VENDOR not in _sys.path:
+    _sys.path.insert(0, _VENDOR)
+try:
+    from zhconv import convert as _zh_convert
+except Exception:
+    _zh_convert = None
+
+_PUNCT_CHARS = " \t\r\n-_.,!?:;/\\|~+*&#@'\"" + "\u00b7\u3001\uff0c\u3002\uff01\uff1f\uff1a\uff1b\u201c\u201d\u2018\u2019\u300a\u300b\u3008\u3009[]()\uff08\uff09\uff5e"
+
+
+def _normalize_name(s):
+    """归一化: 去扩展名 -> 繁转简 -> 去符号空格 -> 小写"""
+    s = os.path.splitext(s)[0]
+    if _zh_convert:
+        try:
+            s = _zh_convert(s, "zh-cn")
+        except Exception:
+            pass
+    s = "".join(ch for ch in s if ch not in _PUNCT_CHARS)
+    return s.lower().strip()
+
 from core.handle.sendAudioHandle import send_stt_message
 from plugins_func.register import register_function, ToolType, ActionResponse, Action
 from core.utils.dialogue import Message
@@ -87,17 +113,29 @@ def _extract_song_name(text):
 
 
 def _find_best_match(potential_song, music_files):
-    """查找最匹配的歌曲"""
+    """查找最匹配的歌曲(简繁归一 + 包含匹配 + 模糊兜底)"""
+    query = _normalize_name(potential_song)
+    if not query:
+        return None
     best_match = None
-    highest_ratio = 0
-
+    highest = 0.0
     for music_file in music_files:
-        song_name = os.path.splitext(music_file)[0]
-        ratio = difflib.SequenceMatcher(None, potential_song, song_name).ratio()
-        if ratio > highest_ratio and ratio > 0.4:
-            highest_ratio = ratio
+        name = _normalize_name(music_file)
+        if not name:
+            continue
+        if query == name:
+            score = 1.0
+        elif query in name:
+            # 歌名是文件名子串(文件名常含歌手/专辑),给高分;越贴近文件名越高
+            score = 0.80 + 0.20 * (len(query) / len(name))
+        elif name in query:
+            score = 0.75
+        else:
+            score = difflib.SequenceMatcher(None, query, name).ratio()
+        if score > highest:
+            highest = score
             best_match = music_file
-    return best_match
+    return best_match if highest >= 0.55 else None
 
 
 def get_music_files(music_dir, music_ext):
@@ -170,6 +208,10 @@ async def handle_music_command(conn: "ConnectionHandler", text):
                 conn.logger.bind(tag=TAG).info(f"找到最匹配的歌曲: {best_match}")
                 await play_local_music(conn, specific_file=best_match)
                 return True
+            # 指定了歌名但库中没有: 明确告知, 不再随机播放(避免答非所问)
+            conn.logger.bind(tag=TAG).info(f"音乐库中未找到: {potential_song}")
+            await _say(conn, f"抱歉，音乐库里没有找到《{potential_song}》")
+            return True
     # 检查是否是通用播放音乐命令
     await play_local_music(conn)
     return True
@@ -217,6 +259,7 @@ async def play_local_music(conn: "ConnectionHandler", specific_file=None):
             conn.logger.bind(tag=TAG).error(f"选定的音乐文件不存在: {music_path}")
             return
         text = _get_random_play_prompt(selected_music)
+        await send_stt_message(conn, text)
         conn.dialogue.put(Message(role="assistant", content=text))
 
         if conn.intent_type == "intent_llm":
@@ -255,3 +298,36 @@ async def play_local_music(conn: "ConnectionHandler", specific_file=None):
     except Exception as e:
         conn.logger.bind(tag=TAG).error(f"播放音乐失败: {str(e)}")
         conn.logger.bind(tag=TAG).error(f"详细错误: {traceback.format_exc()}")
+
+
+async def _say(conn: "ConnectionHandler", text):
+    """仅播报一段文字(不播放音乐文件)"""
+    try:
+        await send_stt_message(conn, text)
+        conn.dialogue.put(Message(role="assistant", content=text))
+        if conn.intent_type == "intent_llm":
+            conn.tts.tts_text_queue.put(
+                TTSMessageDTO(
+                    sentence_id=conn.sentence_id,
+                    sentence_type=SentenceType.FIRST,
+                    content_type=ContentType.ACTION,
+                )
+            )
+        conn.tts.tts_text_queue.put(
+            TTSMessageDTO(
+                sentence_id=conn.sentence_id,
+                sentence_type=SentenceType.MIDDLE,
+                content_type=ContentType.TEXT,
+                content_detail=text,
+            )
+        )
+        if conn.intent_type == "intent_llm":
+            conn.tts.tts_text_queue.put(
+                TTSMessageDTO(
+                    sentence_id=conn.sentence_id,
+                    sentence_type=SentenceType.LAST,
+                    content_type=ContentType.ACTION,
+                )
+            )
+    except Exception as e:
+        conn.logger.bind(tag=TAG).error(f"播报失败: {e}")
