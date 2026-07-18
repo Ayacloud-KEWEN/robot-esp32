@@ -89,6 +89,7 @@
             $route.path === '/server-side-management' ||
             $route.path === '/agent-template-management' ||
             $route.path === '/ota-management' ||
+            $route.path === '/firmware-flash' ||
             $route.path === '/user-management' ||
             $route.path === '/feature-management',
         }" @visible-change="handleParamDropdownVisibleChange">
@@ -101,6 +102,7 @@
                   $route.path === '/server-side-management' ||
                   $route.path === '/agent-template-management' ||
                   $route.path === '/ota-management' ||
+                  $route.path === '/firmware-flash' ||
                   $route.path === '/user-management' ||
                   $route.path === '/feature-management'
                   ? 'brightness(0) invert(1)'
@@ -118,6 +120,9 @@
             </el-dropdown-item>
             <el-dropdown-item @click.native="goOtaManagement">
               {{ $t("header.otaManagement") }}
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goFirmwareFlash">
+              固件烧录
             </el-dropdown-item>
             <el-dropdown-item @click.native="goDictManagement">
               {{ $t("header.dictManagement") }}
@@ -360,6 +365,9 @@ export default {
     },
     goOtaManagement() {
       this.$router.push("/ota-management");
+    },
+    goFirmwareFlash() {
+      this.$router.push("/firmware-flash");
     },
     goDictManagement() {
       this.$router.push("/dict-management");

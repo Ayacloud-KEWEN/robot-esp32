@@ -133,6 +133,17 @@ const routes = [
     }
   },
   {
+    path: '/firmware-flash',
+    name: 'FirmwareFlash',
+    component: function () {
+      return import('../views/FirmwareFlash.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '固件烧录'
+    }
+  },
+  {
     path: '/voice-resource-management',
     name: 'VoiceResourceManagement',
     component: function () {
